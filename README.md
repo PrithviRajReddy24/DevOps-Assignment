@@ -1,125 +1,106 @@
-# DevOps Assignment
+# DevOps Assignment — Cloud Infrastructure
 
-This project consists of a FastAPI backend and a Next.js frontend that communicates with the backend.
+[![Deploy to AWS](https://github.com/PrithviRajReddy24/DevOps-Assignment/actions/workflows/aws.yml/badge.svg)](https://github.com/PrithviRajReddy24/DevOps-Assignment/actions/workflows/aws.yml)
+[![Deploy to GCP](https://github.com/PrithviRajReddy24/DevOps-Assignment/actions/workflows/gcp.yml/badge.svg)](https://github.com/PrithviRajReddy24/DevOps-Assignment/actions/workflows/gcp.yml)
 
-## Project Structure
+## Overview
+Production-grade infrastructure for deploying a **Next.js Frontend** + **FastAPI Backend** to **AWS (ECS Fargate)** and **GCP (Cloud Run)** with full IaC, CI/CD, environment separation, and operational documentation.
 
+## Architecture Summary
+
+| Component | AWS | GCP |
+|-----------|-----|-----|
+| **Compute** | ECS Fargate | Cloud Run |
+| **Networking** | VPC + ALB + NAT | Cloud Run managed |
+| **Region** | `us-east-1` | `us-central1` |
+| **Scaling** | ECS Auto Scaling (CPU-based) | Auto (request-based, scale-to-zero) |
+| **State** | S3 + DynamoDB locking | GCS with built-in locking |
+| **CI/CD** | GitHub Actions → ECR → ECS | GitHub Actions → Artifact Registry → Cloud Run |
+
+## 📁 Repository Structure
 ```
-.
-├── backend/               # FastAPI backend
-│   ├── app/
-│   │   └── main.py       # Main FastAPI application
-│   └── requirements.txt    # Python dependencies
-└── frontend/              # Next.js frontend
-    ├── pages/
-    │   └── index.js     # Main page
-    ├── public/            # Static files
-    └── package.json       # Node.js dependencies
-```
-
-## Prerequisites
-
-- Python 3.8+
-- Node.js 16+
-- npm or yarn
-
-## Backend Setup
-
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Create a virtual environment (recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-   ```
-
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. Run the FastAPI server:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-
-   The backend will be available at `http://localhost:8000`
-
-## Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn
-   ```
-
-3. Configure the backend URL (if different from default):
-   - Open `.env.local`
-   - Update `NEXT_PUBLIC_API_URL` with your backend URL
-   - Example: `NEXT_PUBLIC_API_URL=https://your-backend-url.com`
-
-4. Run the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
-
-   The frontend will be available at `http://localhost:3000`
-
-## Changing the Backend URL
-
-To change the backend URL that the frontend connects to:
-
-1. Open the `.env.local` file in the frontend directory
-2. Update the `NEXT_PUBLIC_API_URL` variable with your new backend URL
-3. Save the file
-4. Restart the Next.js development server for changes to take effect
-
-Example:
-```
-NEXT_PUBLIC_API_URL=https://your-new-backend-url.com
+├── backend/                  # FastAPI backend
+│   ├── app/main.py
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/                 # Next.js frontend
+│   ├── pages/index.js
+│   ├── package.json
+│   └── Dockerfile
+├── terraform/
+│   ├── aws/                  # AWS IaC (VPC, ECS, ALB, Auto Scaling)
+│   │   ├── main.tf
+│   │   ├── vpc.tf
+│   │   ├── security.tf
+│   │   ├── compute.tf
+│   │   ├── autoscaling.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── envs/             # Environment-specific configs
+│   │       ├── dev.tfvars
+│   │       ├── staging.tfvars
+│   │       └── prod.tfvars
+│   └── gcp/                  # GCP IaC (Cloud Run)
+│       ├── main.tf
+│       ├── compute.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── envs/
+│           ├── dev.tfvars
+│           ├── staging.tfvars
+│           └── prod.tfvars
+├── .github/workflows/        # CI/CD Pipelines
+│   ├── aws.yml
+│   └── gcp.yml
+├── docs/                     # Documentation
+│   ├── architecture.md       # Full architecture doc (all 10 requirements)
+│   ├── deployment.md         # Deployment guide
+│   └── decisions.md          # "What We Did NOT Do"
+├── docker-compose.yml        # Local development
+└── setup.ps1                 # Prerequisites checker
 ```
 
-## For deployment:
-   ```bash
-   npm run build
-   # or
-   yarn build
-   ```
+## 🚀 Run Locally
+```bash
+# Using Docker Compose:
+docker-compose up --build
 
-   AND
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:8000/api/health
+```
 
-   ```bash
-   npm run start
-   # or
-   yarn start
-   ```
+## 🛠️ Deploy Infrastructure
+```bash
+# AWS (example: dev environment)
+cd terraform/aws
+terraform init
+terraform plan -var-file=envs/dev.tfvars
+terraform apply -var-file=envs/dev.tfvars
 
-   The frontend will be available at `http://localhost:3000`
+# GCP (example: prod environment)
+cd terraform/gcp
+terraform init
+terraform plan -var-file=envs/prod.tfvars
+terraform apply -var-file=envs/prod.tfvars
+```
 
-## Testing the Integration
+## 📌 Deliverables
+- **Architecture Documentation**: [docs/architecture.md](docs/architecture.md)
+- **Deployment Guide**: [docs/deployment.md](docs/deployment.md)
+- **Design Decisions**: [docs/decisions.md](docs/decisions.md)
+- **Demo Video**: *(Link to be added)*
+- **Live URLs**: *(To be populated after deployment)*
 
-1. Ensure both backend and frontend servers are running
-2. Open the frontend in your browser (default: http://localhost:3000)
-3. If everything is working correctly, you should see:
-   - A status message indicating the backend is connected
-   - The message from the backend: "You've successfully integrated the backend!"
-   - The current backend URL being used
-
-## API Endpoints
-
-- `GET /api/health`: Health check endpoint
-  - Returns: `{"status": "healthy", "message": "Backend is running successfully"}`
-
-- `GET /api/message`: Get the integration message
-  - Returns: `{"message": "You've successfully integrated the backend!"}`
+## 📖 Documentation Highlights
+The [architecture document](docs/architecture.md) covers:
+1. Cloud & Region Selection with justifications
+2. Compute & Runtime Decisions (ECS Fargate vs Cloud Run)
+3. Networking & Traffic Flow with diagrams
+4. Environment Separation (dev/staging/prod)
+5. Scalability & Availability strategy
+6. Deployment & Rollback strategy
+7. IaC & State Management
+8. Security & Identity (least privilege)
+9. Failure & Operational Thinking
+10. Future Growth Scenarios
+11. What We Intentionally Did NOT Do (and why)

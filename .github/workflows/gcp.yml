@@ -1,0 +1,65 @@
+name: Deploy to GCP
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  BACKEND_SERVICE: devops-assignment-prod-backend
+  FRONTEND_SERVICE: devops-assignment-prod-frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+    - name: Set up Cloud SDK
+      uses: 'google-github-actions/setup-gcloud@v1'
+
+    - name: Configure Docker
+      run: |
+        gcloud auth configure-docker us-central1-docker.pkg.dev
+
+    - name: Build and Push Backend
+      run: |
+        docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/devops-assignment/backend:${{ github.sha }} ./backend
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/devops-assignment/backend:${{ github.sha }}
+
+    - name: Deploy Backend to Cloud Run
+      uses: 'google-github-actions/deploy-cloudrun@v1'
+      with:
+        service: ${{ env.BACKEND_SERVICE }}
+        image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/devops-assignment/backend:${{ github.sha }}
+        region: ${{ env.REGION }}
+
+    - name: Get Backend URL
+      id: get-url
+      run: |
+        echo "backend_url=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} --region ${{ env.REGION }} --format 'value(status.url)')" >> $GITHUB_OUTPUT
+
+    - name: Build and Push Frontend
+      run: |
+        docker build --build-arg NEXT_PUBLIC_API_URL=${{ steps.get-url.outputs.backend_url }} -t us-central1-docker.pkg.dev/$PROJECT_ID/devops-assignment/frontend:${{ github.sha }} ./frontend
+        docker push us-central1-docker.pkg.dev/$PROJECT_ID/devops-assignment/frontend:${{ github.sha }}
+
+    - name: Deploy Frontend to Cloud Run
+      uses: 'google-github-actions/deploy-cloudrun@v1'
+      with:
+        service: ${{ env.FRONTEND_SERVICE }}
+        image: us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/devops-assignment/frontend:${{ github.sha }}
+        region: ${{ env.REGION }}
