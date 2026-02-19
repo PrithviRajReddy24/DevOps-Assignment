@@ -1,12 +1,7 @@
-variable "project_id" {
-  description = "GCP Project ID"
+variable "location" {
+  description = "Azure region"
   type        = string
-}
-
-variable "region" {
-  description = "GCP Region"
-  type        = string
-  default     = "us-central1"
+  default     = "eastus"
 }
 
 variable "environment" {

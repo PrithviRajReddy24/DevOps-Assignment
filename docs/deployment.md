@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - AWS Account with Admin access
-- GCP Project with Billing enabled
+- Azure Subscription with Contributor access
 - Terraform installed
 - Docker installed
 - GitHub Account (for CI/CD)
@@ -17,26 +17,30 @@
    ```
 3. Plan deployment and check for errors:
    ```bash
-   terraform plan
+   terraform plan -var-file=envs/prod.tfvars
    ```
 4. Apply infrastructure:
    ```bash
-   terraform apply
+   terraform apply -var-file=envs/prod.tfvars
    ```
 
-### GCP
-1. Navigate to `terraform/gcp`.
-2. Initialize:
+### Azure
+1. Navigate to `terraform/azure`.
+2. Login to Azure CLI:
+   ```bash
+   az login
+   ```
+3. Initialize Terraform:
    ```bash
    terraform init
    ```
-3. Plan:
+4. Plan deployment:
    ```bash
-   terraform plan
+   terraform plan -var-file=envs/prod.tfvars
    ```
-4. Apply:
+5. Apply infrastructure:
    ```bash
-   terraform apply
+   terraform apply -var-file=envs/prod.tfvars
    ```
 
 ## CI/CD Pipeline
@@ -45,15 +49,15 @@ GitHub Actions are configured in `.github/workflows`.
 ### Secrets Required
 - `AWS_ACCESS_KEY_ID`: AWS Access Key.
 - `AWS_SECRET_ACCESS_KEY`: AWS Secret Key.
-- `GCP_PROJECT_ID`: GCP Project ID.
-- `GCP_CREDENTIALS`: GCP Service Account JSON Key (Base64 encoded or direct JSON).
+- `AZURE_CREDENTIALS`: Azure Service Principal JSON (`az ad sp create-for-rbac` output).
 - `NEXT_PUBLIC_API_URL`: The URL of the deployed backend (Required for Frontend build on AWS).
 
 ## Monitoring & Failure Handling
-- **AWS**: Monitor CloudWatch path for ECS metrics and ALB 5XX errors.
-- **GCP**: Use Cloud Monitoring and Error Reporting.
-- **Failure**: Both platforms auto-restart failed containers.
+- **AWS**: Monitor CloudWatch for ECS metrics and ALB 5XX errors.
+- **Azure**: Use Log Analytics workspace and Container App metrics/logs.
+- **Failure**: Both platforms auto-restart failed containers/replicas.
 
 ## Rollback Strategy
-- **Infrastructure**: `terraform revert` or apply previous state.
+- **Infrastructure**: `terraform apply` with previous state or revert the Terraform code commit.
 - **Application**: Revert git commit to trigger previous image build/deploy.
+- **Azure**: Switch to previous Container Apps revision for instant rollback.

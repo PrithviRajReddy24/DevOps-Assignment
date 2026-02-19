@@ -1,0 +1,67 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  AZURE_REGION: eastus
+  RESOURCE_GROUP: devops-assignment-prod-rg
+  BACKEND_APP: devops-assignment-prod-backend
+  FRONTEND_APP: devops-assignment-prod-frontend
+  ACR_NAME: devopsassignmentprodacr
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to ACR
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+
+    - name: Build and Push Backend
+      run: |
+        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query loginServer -o tsv)
+        docker build -t $ACR_LOGIN_SERVER/backend:${{ github.sha }} ./backend
+        docker push $ACR_LOGIN_SERVER/backend:${{ github.sha }}
+        echo "backend_image=$ACR_LOGIN_SERVER/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
+      id: build-backend
+
+    - name: Deploy Backend to Container Apps
+      uses: azure/container-apps-deploy-action@v1
+      with:
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        containerAppName: ${{ env.BACKEND_APP }}
+        imageToDeploy: ${{ steps.build-backend.outputs.backend_image }}
+
+    - name: Get Backend URL
+      id: get-url
+      run: |
+        BACKEND_FQDN=$(az containerapp show --name ${{ env.BACKEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} --query "properties.configuration.ingress.fqdn" -o tsv)
+        echo "backend_url=https://$BACKEND_FQDN" >> $GITHUB_OUTPUT
+
+    - name: Build and Push Frontend
+      run: |
+        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query loginServer -o tsv)
+        docker build --build-arg NEXT_PUBLIC_API_URL=${{ steps.get-url.outputs.backend_url }} -t $ACR_LOGIN_SERVER/frontend:${{ github.sha }} ./frontend
+        docker push $ACR_LOGIN_SERVER/frontend:${{ github.sha }}
+        echo "frontend_image=$ACR_LOGIN_SERVER/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
+      id: build-frontend
+
+    - name: Deploy Frontend to Container Apps
+      uses: azure/container-apps-deploy-action@v1
+      with:
+        resourceGroup: ${{ env.RESOURCE_GROUP }}
+        containerAppName: ${{ env.FRONTEND_APP }}
+        imageToDeploy: ${{ steps.build-frontend.outputs.frontend_image }}

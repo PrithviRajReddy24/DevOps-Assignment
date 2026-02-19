@@ -35,7 +35,7 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build, tag, and push image to Amazon ECR
+    - name: Build, tag, and push images to Amazon ECR
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -45,20 +45,23 @@ jobs:
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG ./backend
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
         echo "image_backend=$ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
-        
+
         # Build Frontend
-        # Fetch Load Balancer DNS from Terraform or Secrets, or use a placeholder for now
-        # Ideally this should be retrieved from Terraform outputs
-        NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} 
+        NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
         docker build --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG ./frontend
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
         echo "image_frontend=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+    - name: Download current task definition (Backend)
+      run: |
+        aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE_BACKEND }} \
+          --query taskDefinition > task-definition-backend.json
 
     - name: Fill in the new image ID in the Amazon ECS task definition (Backend)
       id: task-def-backend
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: task-definition-backend.json # Needs to be downloaded or managed
+        task-definition: task-definition-backend.json
         container-name: ${{ env.CONTAINER_NAME_BACKEND }}
         image: ${{ steps.build-image.outputs.image_backend }}
 
@@ -70,11 +73,16 @@ jobs:
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
 
+    - name: Download current task definition (Frontend)
+      run: |
+        aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE_FRONTEND }} \
+          --query taskDefinition > task-definition-frontend.json
+
     - name: Fill in the new image ID in the Amazon ECS task definition (Frontend)
       id: task-def-frontend
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: task-definition-frontend.json # Needs to be downloaded or managed
+        task-definition: task-definition-frontend.json
         container-name: ${{ env.CONTAINER_NAME_FRONTEND }}
         image: ${{ steps.build-image.outputs.image_frontend }}
 
