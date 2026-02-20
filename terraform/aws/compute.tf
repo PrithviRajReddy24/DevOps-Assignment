@@ -32,7 +32,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 
 # Load Balancer
 resource "aws_lb" "main" {
-  name               = "${var.app_name}-${var.environment}-alb"
+  name               = "da-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -45,7 +45,7 @@ resource "aws_lb" "main" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name        = "${var.app_name}-${var.environment}-frontend-tg"
+  name        = "da-${var.environment}-frontend-tg"
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
@@ -59,7 +59,7 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 resource "aws_lb_target_group" "backend" {
-  name        = "${var.app_name}-${var.environment}-backend-tg"
+  name        = "da-${var.environment}-backend-tg"
   port        = 8000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id

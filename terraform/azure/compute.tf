@@ -1,6 +1,13 @@
+# Random suffix for globally unique ACR name
+resource "random_string" "acr_suffix" {
+  length  = 4
+  special = false
+  upper   = false
+}
+
 # Azure Container Registry
 resource "azurerm_container_registry" "main" {
-  name                = replace("${var.app_name}${var.environment}acr", "-", "")
+  name                = replace("${var.app_name}${var.environment}acr${random_string.acr_suffix.result}", "-", "")
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   sku                 = "Basic"

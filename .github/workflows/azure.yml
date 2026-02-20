@@ -9,7 +9,6 @@ env:
   RESOURCE_GROUP: devops-assignment-prod-rg
   BACKEND_APP: devops-assignment-prod-backend
   FRONTEND_APP: devops-assignment-prod-frontend
-  ACR_NAME: devopsassignmentprodacr
 
 jobs:
   deploy:
@@ -26,24 +25,31 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    - name: Get ACR Name
+      id: acr
+      run: |
+        ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
+        ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+        echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
+        echo "login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+
     - name: Login to ACR
       run: |
-        az acr login --name ${{ env.ACR_NAME }}
+        az acr login --name ${{ steps.acr.outputs.acr_name }}
 
     - name: Build and Push Backend
-      run: |
-        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query loginServer -o tsv)
-        docker build -t $ACR_LOGIN_SERVER/backend:${{ github.sha }} ./backend
-        docker push $ACR_LOGIN_SERVER/backend:${{ github.sha }}
-        echo "backend_image=$ACR_LOGIN_SERVER/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
       id: build-backend
+      run: |
+        docker build -t ${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }} ./backend
+        docker push ${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }}
+        echo "image=${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
 
     - name: Deploy Backend to Container Apps
       uses: azure/container-apps-deploy-action@v1
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.BACKEND_APP }}
-        imageToDeploy: ${{ steps.build-backend.outputs.backend_image }}
+        imageToDeploy: ${{ steps.build-backend.outputs.image }}
 
     - name: Get Backend URL
       id: get-url
@@ -52,16 +58,15 @@ jobs:
         echo "backend_url=https://$BACKEND_FQDN" >> $GITHUB_OUTPUT
 
     - name: Build and Push Frontend
-      run: |
-        ACR_LOGIN_SERVER=$(az acr show --name ${{ env.ACR_NAME }} --query loginServer -o tsv)
-        docker build --build-arg NEXT_PUBLIC_API_URL=${{ steps.get-url.outputs.backend_url }} -t $ACR_LOGIN_SERVER/frontend:${{ github.sha }} ./frontend
-        docker push $ACR_LOGIN_SERVER/frontend:${{ github.sha }}
-        echo "frontend_image=$ACR_LOGIN_SERVER/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
       id: build-frontend
+      run: |
+        docker build --build-arg NEXT_PUBLIC_API_URL=${{ steps.get-url.outputs.backend_url }} -t ${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }} ./frontend
+        docker push ${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }}
+        echo "image=${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
 
     - name: Deploy Frontend to Container Apps
       uses: azure/container-apps-deploy-action@v1
       with:
         resourceGroup: ${{ env.RESOURCE_GROUP }}
         containerAppName: ${{ env.FRONTEND_APP }}
-        imageToDeploy: ${{ steps.build-frontend.outputs.frontend_image }}
+        imageToDeploy: ${{ steps.build-frontend.outputs.image }}
