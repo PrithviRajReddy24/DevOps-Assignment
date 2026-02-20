@@ -25,31 +25,44 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Get ACR Name
+    - name: Get ACR Credentials
       id: acr
       run: |
         ACR_NAME=$(az acr list --resource-group ${{ env.RESOURCE_GROUP }} --query "[0].name" -o tsv)
         ACR_LOGIN_SERVER=$(az acr show --name $ACR_NAME --query loginServer -o tsv)
+        ACR_USERNAME=$(az acr credential show --name $ACR_NAME --query username -o tsv)
+        ACR_PASSWORD=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
         echo "acr_name=$ACR_NAME" >> $GITHUB_OUTPUT
         echo "login_server=$ACR_LOGIN_SERVER" >> $GITHUB_OUTPUT
+        echo "::add-mask::$ACR_PASSWORD"
+        echo "acr_username=$ACR_USERNAME" >> $GITHUB_OUTPUT
+        echo "acr_password=$ACR_PASSWORD" >> $GITHUB_OUTPUT
 
     - name: Login to ACR
       run: |
-        az acr login --name ${{ steps.acr.outputs.acr_name }}
+        docker login ${{ steps.acr.outputs.login_server }} -u ${{ steps.acr.outputs.acr_username }} -p ${{ steps.acr.outputs.acr_password }}
+
+    - name: Configure ACR on Container Apps
+      run: |
+        az containerapp registry set --name ${{ env.BACKEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} \
+          --server ${{ steps.acr.outputs.login_server }} \
+          --username ${{ steps.acr.outputs.acr_username }} \
+          --password ${{ steps.acr.outputs.acr_password }}
+        az containerapp registry set --name ${{ env.FRONTEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} \
+          --server ${{ steps.acr.outputs.login_server }} \
+          --username ${{ steps.acr.outputs.acr_username }} \
+          --password ${{ steps.acr.outputs.acr_password }}
 
     - name: Build and Push Backend
       id: build-backend
       run: |
         docker build -t ${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }} ./backend
         docker push ${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }}
-        echo "image=${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-    - name: Deploy Backend to Container Apps
-      uses: azure/container-apps-deploy-action@v1
-      with:
-        resourceGroup: ${{ env.RESOURCE_GROUP }}
-        containerAppName: ${{ env.BACKEND_APP }}
-        imageToDeploy: ${{ steps.build-backend.outputs.image }}
+    - name: Deploy Backend
+      run: |
+        az containerapp update --name ${{ env.BACKEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ steps.acr.outputs.login_server }}/backend:${{ github.sha }}
 
     - name: Get Backend URL
       id: get-url
@@ -62,11 +75,8 @@ jobs:
       run: |
         docker build --build-arg NEXT_PUBLIC_API_URL=${{ steps.get-url.outputs.backend_url }} -t ${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }} ./frontend
         docker push ${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }}
-        echo "image=${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }}" >> $GITHUB_OUTPUT
 
-    - name: Deploy Frontend to Container Apps
-      uses: azure/container-apps-deploy-action@v1
-      with:
-        resourceGroup: ${{ env.RESOURCE_GROUP }}
-        containerAppName: ${{ env.FRONTEND_APP }}
-        imageToDeploy: ${{ steps.build-frontend.outputs.image }}
+    - name: Deploy Frontend
+      run: |
+        az containerapp update --name ${{ env.FRONTEND_APP }} --resource-group ${{ env.RESOURCE_GROUP }} \
+          --image ${{ steps.acr.outputs.login_server }}/frontend:${{ github.sha }}
