@@ -89,7 +89,10 @@ terraform apply -var-file=envs/prod.tfvars
 - **Deployment Guide**: [docs/deployment.md](docs/deployment.md)
 - **Design Decisions**: [docs/decisions.md](docs/decisions.md)
 - **Demo Video**: *(Link to be added)*
-- **Live URLs**: *(To be populated after deployment)*
+- **Live URLs**:
+  - **AWS**: http://da-prod-alb-1101620554.us-east-1.elb.amazonaws.com
+  - **Azure Frontend**: https://devops-assignment-prod-frontend.wittyhill-18302eea.eastus.azurecontainerapps.io
+  - **Azure Backend**: https://devops-assignment-prod-backend.wittyhill-18302eea.eastus.azurecontainerapps.io
 
 ## 📖 Documentation Highlights
 The [architecture document](docs/architecture.md) covers:
