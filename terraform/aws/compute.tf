@@ -1,3 +1,26 @@
+# ECR Repositories
+resource "aws_ecr_repository" "backend" {
+  name                 = "${var.app_name}-backend"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  tags = {
+    Name        = "${var.app_name}-backend"
+    Environment = var.environment
+  }
+}
+
+resource "aws_ecr_repository" "frontend" {
+  name                 = "${var.app_name}-frontend"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  tags = {
+    Name        = "${var.app_name}-frontend"
+    Environment = var.environment
+  }
+}
+
 resource "aws_ecs_cluster" "main" {
   name = "${var.app_name}-${var.environment}-cluster"
 
