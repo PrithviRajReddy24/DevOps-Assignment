@@ -54,7 +54,7 @@ jobs:
 
         # Build Frontend
         ALB_DNS=${{ steps.get-alb.outputs.alb_dns }}
-        NEXT_PUBLIC_API_URL="http://$ALB_DNS/api"
+        NEXT_PUBLIC_API_URL="http://$ALB_DNS"
         docker build --build-arg NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG ./frontend
         docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
         echo "image_frontend=$ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG" >> $GITHUB_OUTPUT
