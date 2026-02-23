@@ -50,7 +50,9 @@ GitHub Actions are configured in `.github/workflows`.
 - `AWS_ACCESS_KEY_ID`: AWS Access Key.
 - `AWS_SECRET_ACCESS_KEY`: AWS Secret Key.
 - `AZURE_CREDENTIALS`: Azure Service Principal JSON (`az ad sp create-for-rbac` output).
-- `NEXT_PUBLIC_API_URL`: The URL of the deployed backend (Required for Frontend build on AWS).
+
+> [!NOTE]
+> `NEXT_PUBLIC_API_URL` is now handled **dynamically** in both AWS and Azure pipelines. The workflows automatically fetch the backend URL from the cloud provider during the build process, ensuring zero-config connectivity.
 
 ## Monitoring & Failure Handling
 - **AWS**: Monitor CloudWatch for ECS metrics and ALB 5XX errors.
