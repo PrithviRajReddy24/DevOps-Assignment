@@ -90,9 +90,9 @@ terraform apply -var-file=envs/prod.tfvars
 - **Design Decisions**: [docs/decisions.md](docs/decisions.md)
 - **Demo Video**: *(Link to be added)*
 - **Live URLs**:
-  - **AWS**: http://da-prod-alb-2047519560.us-east-1.elb.amazonaws.com
-  - **Azure Frontend**: https://devops-assignment-prod-frontend.bravetree-3e00d54f.eastus.azurecontainerapps.io
-  - **Azure Backend**: https://devops-assignment-prod-backend.bravetree-3e00d54f.eastus.azurecontainerapps.io
+  - **AWS**: http://da-prod-alb-686014369.us-east-1.elb.amazonaws.com
+  - **Azure Frontend**: https://devops-assignment-prod-frontend.victoriouspebble-7210f9a5.eastus.azurecontainerapps.io
+  - **Azure Backend**: https://devops-assignment-prod-backend.victoriouspebble-7210f9a5.eastus.azurecontainerapps.io
 
 ## 📖 Documentation Highlights
 The [architecture document](docs/architecture.md) covers:
